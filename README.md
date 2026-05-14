@@ -2,6 +2,8 @@
 
 A comprehensive data analysis project for Indian Premier League (IPL) cricket statistics, tracking batting performance and match data from 2008 to 2025.
 
+Deployed at https://ipl-impact-model.streamlit.app/
+
 ## Project Overview
 
 This project analyzes IPL match scorecards and cricket statistics to generate insights on player performance. It includes web scraping capabilities to collect match data, data processing tools to calculate performance metrics, and analysis scripts to generate career and seasonal statistics.
