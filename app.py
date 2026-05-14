@@ -118,7 +118,7 @@ st.info("Impact scores are batting-only. Bowling metrics are not modeled in this
 
 files = find_scorecard_files(BASE_DIR)
 if not files:
-    st.warning("No scorecard files found in scoreacrds/base. Add scorecards and refresh.")
+    st.warning("No scorecard files found in scorecards/base. Add scorecards and refresh.")
     st.stop()
 
 file_season_map = build_file_season_map(files)

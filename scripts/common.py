@@ -8,7 +8,7 @@ import numpy as np
 import pandas as pd
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-SCORECARDS_DIR = REPO_ROOT / "scoreacrds"
+SCORECARDS_DIR = REPO_ROOT / "scorecards"
 BASE_DIR = SCORECARDS_DIR / "base"
 RESULTS_DIR = SCORECARDS_DIR / "results"
 

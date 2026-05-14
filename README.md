@@ -14,8 +14,8 @@ Note: The impact score model is batting-only. Bowling data is treated as raw sco
 - **Match Scorecards**: Excel files containing raw IPL match data from seasons 2008-2025
 - **Data Range**: 1,181+ match records organized in seasonal batches
 - **File Organization**:
-  - `scoreacrds/base/` - Raw match data
-  - `scoreacrds/results/` - Processed data with impact metrics
+  - `scorecards/base/` - Raw match data
+  - `scorecards/results/` - Processed data with impact metrics
   - `IPL_Scorecards_XXXX_to_XXXX.xlsx` - Raw match data
   - `IPL_Scorecards_XXXX_to_XXXX_with_impact.xlsx` - Processed data with impact metrics
 
@@ -186,7 +186,7 @@ Bowling data is not scored by the impact model.
    ```bash
    pip install pandas openpyxl requests beautifulsoup4 numpy
    ```
-3. Place raw scorecards in `scoreacrds/base/`
+3. Place raw scorecards in `scorecards/base/`
 4. Run analysis via `python -m scripts.cli ...`
 
 ## Notes
