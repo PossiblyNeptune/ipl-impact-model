@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import List, Dict, Optional
+from typing import List, Dict
 
 import pandas as pd
 import plotly.express as px
@@ -15,7 +15,7 @@ from scripts.common import (
     configure_pandas_display,
     find_scorecard_files,
 )
-from scripts.scorecard import extract_batting_blocks, extract_bowling_blocks, extract_team_totals
+from scripts.scorecard import extract_batting_blocks
 
 
 configure_pandas_display()
@@ -108,11 +108,13 @@ st.markdown(
     """
     <div class="hero">
       <h1>IPL Impact Studio</h1>
-      <p>Explore match scorecards, impact ratings, and season trends with a streamlined analysis view.</p>
+            <p>Explore match scorecards, batting impact ratings, and season trends.</p>
     </div>
     """,
     unsafe_allow_html=True,
 )
+
+st.info("Impact scores are batting-only. Bowling metrics are not modeled in this UI.")
 
 files = find_scorecard_files(BASE_DIR)
 if not files:
@@ -162,8 +164,6 @@ match_df = load_sheet(str(selected_file), selected_match)
 impact_df = impact.match_impact_dataframe(match_df, season_label, selected_match)
 
 batting_blocks = extract_batting_blocks(match_df)
-bowling_blocks = extract_bowling_blocks(match_df)
-team_totals = extract_team_totals(match_df)
 
 impact_map = {}
 if not impact_df.empty:
@@ -242,15 +242,18 @@ if team_summary_rows:
     team_fig.update_layout(height=320)
     st.plotly_chart(team_fig, use_container_width=True)
 
-tab_scorecard, tab_impact, tab_trends = st.tabs(["Scorecard", "Impact Leaders", "Trends"])
+tab_scorecard, tab_impact, tab_trends = st.tabs([
+    "Batting Scorecard",
+    "Batting Impact Leaders",
+    "Batting Trends",
+])
 
 with tab_scorecard:
-    st.subheader("Scorecard")
+    st.subheader("Batting Scorecard")
 
     for idx, block in enumerate(batting_blocks):
         team_name = block.get("team_name", f"Innings {idx + 1}")
         batting_df = block["batting"].copy()
-        bowling_df = bowling_blocks[idx]["bowling"].copy() if idx < len(bowling_blocks) else pd.DataFrame()
 
         st.markdown(f"### {team_name}")
         if not batting_df.empty:
@@ -266,18 +269,8 @@ with tab_scorecard:
         else:
             st.info("No batting data found for this innings.")
 
-        if not bowling_df.empty:
-            st.markdown("#### Bowling")
-            bowling_df["Economy"] = pd.to_numeric(bowling_df["Economy"], errors="coerce")
-            st.dataframe(
-                bowling_df.style.format({"Economy": "{:.2f}"}),
-                use_container_width=True,
-            )
-        else:
-            st.info("No bowling data found for this innings.")
-
 with tab_impact:
-    st.subheader("Impact Leaders")
+    st.subheader("Batting Impact Leaders")
 
     if impact_df.empty:
         st.info("No impact data found for this match.")
@@ -311,7 +304,7 @@ with tab_impact:
         st.plotly_chart(scatter_fig, use_container_width=True)
 
 with tab_trends:
-    st.subheader("Season Trends")
+    st.subheader("Batting Trends")
     trends_enabled = st.checkbox("Load season trend data", value=False)
 
     if not trends_enabled:

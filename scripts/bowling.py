@@ -5,7 +5,7 @@ from typing import Iterable, List, Dict, Optional
 
 import pandas as pd
 
-from .common import build_file_season_map
+from .common import build_file_season_map, clean_player_name_strict
 
 
 def convert_overs_to_balls(overs: object) -> int:
@@ -25,11 +25,17 @@ def convert_balls_to_overs(balls: int) -> str:
     return f"{balls // 6}.{balls % 6}"
 
 
-def get_player_bowling_stats(player_name: str, files: Iterable[Path]) -> pd.DataFrame:
+def _collect_bowling_rows(
+    files: Iterable[Path],
+    file_season_map: Optional[Dict[Path, Optional[str]]] = None,
+) -> List[Dict[str, object]]:
     rows: List[Dict[str, object]] = []
-    name_lower = player_name.lower()
+    files_list = list(files)
+    if not file_season_map:
+        file_season_map = build_file_season_map(files_list)
 
-    for file_path in files:
+    for file_path in files_list:
+        season_label = file_season_map.get(file_path)
         try:
             xls = pd.ExcelFile(file_path)
         except Exception as exc:
@@ -52,23 +58,47 @@ def get_player_bowling_stats(player_name: str, files: Iterable[Path]) -> pd.Data
                     bowling_df = df.iloc[start + 1: end]
 
                     for _, row in bowling_df.iterrows():
-                        if isinstance(row[0], str) and name_lower in row[0].lower():
-                            rows.append({
-                                "File": file_path.name,
-                                "Match": sheet_name,
-                                "Player": row[0],
-                                "Overs": row[1],
-                                "Maidens": row[2],
-                                "Runs Conceded": row[3],
-                                "Wickets": row[4],
-                                "Economy": row[5],
-                                "% of Team Wickets": row[6] if len(row) > 6 else None,
-                            })
+                        raw_name = row[0]
+                        if not isinstance(raw_name, str) or not raw_name.strip():
+                            continue
+                        cleaned_name = clean_player_name_strict(raw_name)
+                        rows.append({
+                            "File": file_path.name,
+                            "Match": sheet_name,
+                            "Season": season_label,
+                            "Bowler": cleaned_name or raw_name,
+                            "BowlerRaw": raw_name,
+                            "Overs": row[1],
+                            "Maidens": row[2],
+                            "Runs Conceded": row[3],
+                            "Wickets": row[4],
+                            "Economy": row[5],
+                            "% of Team Wickets": row[6] if len(row) > 6 else None,
+                        })
             except Exception as exc:
                 print(f"Error processing sheet {sheet_name} in {file_path}: {exc}")
                 continue
 
+    return rows
+
+
+def get_all_bowling_stats(
+    files: Iterable[Path],
+    file_season_map: Optional[Dict[Path, Optional[str]]] = None,
+) -> pd.DataFrame:
+    rows = _collect_bowling_rows(files, file_season_map)
     return pd.DataFrame(rows)
+
+
+def get_player_bowling_stats(player_name: str, files: Iterable[Path]) -> pd.DataFrame:
+    name_lower = player_name.lower()
+    df = get_all_bowling_stats(files)
+    if df.empty:
+        return df
+
+    raw_mask = df["BowlerRaw"].astype(str).str.lower().str.contains(name_lower, na=False)
+    clean_mask = df["Bowler"].astype(str).str.lower().str.contains(name_lower, na=False)
+    return df[raw_mask | clean_mask].copy()
 
 
 def summarize_bowling_df(bowling_df: pd.DataFrame) -> Dict[str, object]:
@@ -98,6 +128,75 @@ def summarize_bowling_df(bowling_df: pd.DataFrame) -> Dict[str, object]:
         "Average": avg,
         "Strike Rate": sr,
     }
+
+
+def aggregate_bowling_stats(bowling_df: pd.DataFrame) -> pd.DataFrame:
+    if bowling_df.empty:
+        return pd.DataFrame()
+
+    df = bowling_df.copy()
+    for col in ["Overs", "Maidens", "Runs Conceded", "Wickets", "Economy"]:
+        df[col] = pd.to_numeric(df[col], errors="coerce")
+
+    df["Balls Bowled"] = df["Overs"].apply(convert_overs_to_balls)
+
+    aggregated = df.groupby("Bowler").agg({
+        "Balls Bowled": "sum",
+        "Runs Conceded": "sum",
+        "Wickets": "sum",
+        "Maidens": "sum",
+    }).reset_index()
+
+    aggregated["Overs"] = aggregated["Balls Bowled"].apply(convert_balls_to_overs)
+    aggregated["Economy"] = aggregated.apply(
+        lambda row: round((row["Runs Conceded"] / row["Balls Bowled"]) * 6, 2)
+        if row["Balls Bowled"] > 0 else None,
+        axis=1,
+    )
+    aggregated["Average"] = aggregated.apply(
+        lambda row: round(row["Runs Conceded"] / row["Wickets"], 2)
+        if row["Wickets"] > 0 else None,
+        axis=1,
+    )
+    aggregated["Strike Rate"] = aggregated.apply(
+        lambda row: round(row["Balls Bowled"] / row["Wickets"], 2)
+        if row["Wickets"] > 0 else None,
+        axis=1,
+    )
+
+    return aggregated
+
+
+def bowling_leaderboard(
+    bowling_df: pd.DataFrame,
+    metric: str = "Wickets",
+    min_overs: float = 10.0,
+    limit: int = 20,
+) -> pd.DataFrame:
+    if bowling_df.empty:
+        return pd.DataFrame()
+
+    aggregated = aggregate_bowling_stats(bowling_df)
+    if aggregated.empty:
+        return aggregated
+
+    min_balls = int(min_overs * 6)
+    aggregated = aggregated[aggregated["Balls Bowled"] >= min_balls]
+
+    metric_key = metric.strip().lower()
+    if metric_key in {"average", "strike rate"}:
+        aggregated = aggregated[aggregated["Wickets"] > 0]
+
+    metric_map = {
+        "wickets": "Wickets",
+        "economy": "Economy",
+        "average": "Average",
+        "strike rate": "Strike Rate",
+    }
+    metric_column = metric_map.get(metric_key, "Wickets")
+    ascending = metric_key in {"economy", "average", "strike rate"}
+
+    return aggregated.sort_values(by=metric_column, ascending=ascending).head(limit)
 
 
 def summarize_bowling_by_season(
@@ -156,3 +255,23 @@ def print_bowling_summaries(
         print(f"Overall Economy Rate: {career_summary['Economy']}")
         print(f"Bowling Average: {career_summary['Average']}")
         print(f"Bowling Strike Rate: {career_summary['Strike Rate']}")
+
+
+def print_bowling_leaders(leader_df: pd.DataFrame, metric: str) -> None:
+    if leader_df.empty:
+        print("No bowling data found for the selected filters.")
+        return
+
+    metric_key = metric.strip().lower()
+    metric_map = {
+        "wickets": "Wickets",
+        "economy": "Economy",
+        "average": "Average",
+        "strike rate": "Strike Rate",
+    }
+    metric_column = metric_map.get(metric_key, "Wickets")
+
+    print(f"\n=== Bowling Leaders by {metric_column} ===")
+    for rank, row in enumerate(leader_df.itertuples(index=False), start=1):
+        value = getattr(row, metric_column.replace(" ", "_"), None)
+        print(f"#{rank}: {row.Bowler} | {metric_column}: {value}")

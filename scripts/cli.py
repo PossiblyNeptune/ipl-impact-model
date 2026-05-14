@@ -73,7 +73,7 @@ def main() -> None:
     _add_common_file_args(bowling_player)
     bowling_player.add_argument("--csv", help="Write raw innings to CSV")
 
-    impact_parser = subparsers.add_parser("impact", help="Impact index analysis")
+    impact_parser = subparsers.add_parser("impact", help="Batting impact index analysis")
     impact_sub = impact_parser.add_subparsers(dest="impact_cmd", required=True)
 
     impact_top_innings = impact_sub.add_parser("top-innings", help="Top impact innings")

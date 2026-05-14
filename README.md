@@ -1,10 +1,12 @@
 # IPL Impact Analysis
 
-A comprehensive data analysis project for Indian Premier League (IPL) cricket statistics, tracking player performance and match data from 2008 to 2025.
+A comprehensive data analysis project for Indian Premier League (IPL) cricket statistics, tracking batting performance and match data from 2008 to 2025.
 
 ## Project Overview
 
 This project analyzes IPL match scorecards and cricket statistics to generate insights on player performance. It includes web scraping capabilities to collect match data, data processing tools to calculate performance metrics, and analysis scripts to generate career and seasonal statistics.
+
+Note: The impact score model is batting-only. Bowling data is treated as raw scorecard information and is not part of the impact ratings.
 
 ## Data Structure
 
@@ -56,7 +58,7 @@ All analysis utilities now live in the `scripts/` folder.
 - **Career Statistics**: Track player performance across multiple seasons
 - **Seasonal Breakdown**: Analyze performance by IPL season
 - **Player Rankings**: Identify top performers based on various metrics
-- **Match Impact**: Calculate individual player contributions to match outcomes
+- **Batting Impact**: Calculate batting impact contributions to match outcomes
 
 ## Technical Stack
 
@@ -99,6 +101,8 @@ python -m scripts.cli batting top-sr --min-runs 750 --limit 20
 python -m scripts.cli bowling player "Jasprit Bumrah"
 ```
 
+Bowling summaries are raw aggregates only; the impact model remains batting-only.
+
 ### Impact Leaderboards
 ```bash
 python -m scripts.cli impact top-innings --limit 50
@@ -115,6 +119,8 @@ Run the UI locally:
 pip install -r requirements.txt
 streamlit run app.py
 ```
+
+The Streamlit UI focuses on batting impact scores and batting-related trends.
 
 ### Deploy to Streamlit Community Cloud
 1. Push the repository to GitHub.
@@ -165,12 +171,13 @@ Each match sheet contains:
 - **Average**: Runs per innings
 - **% of Team Runs**: Contribution to team total
 
-### Bowling Metrics
+### Bowling Data (Raw Only)
 - **Overs**: Bowling overs bowled
 - **Runs**: Runs conceded
 - **Wickets**: Wickets taken
 - **Economy Rate**: Runs conceded per over
-- **Impact Score**: Normalized performance metric
+
+Bowling data is not scored by the impact model.
 
 ## Installation
 
@@ -188,11 +195,3 @@ Each match sheet contains:
 - Impact metrics are calculated to identify match-winning contributions
 - Player names are cleaned to remove special characters and annotations for consistent grouping
 - The project covers 18 IPL seasons with over 1,181 matches analyzed
-
-## Purpose
-
-This project appears to be developed for:
-- Cricket statistics blogging and content creation
-- Player performance analysis and comparison
-- Historical IPL statistics aggregation
-- Match impact assessment and insights
