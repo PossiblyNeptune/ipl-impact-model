@@ -1,6 +1,6 @@
 # IPL Impact Analysis
 
-A comprehensive data analysis project for Indian Premier League (IPL) cricket statistics, tracking batting performance and match data from 2008 to 2025.
+A comprehensive data analysis project for Indian Premier League (IPL) cricket statistics, tracking batting performance and match data from 2008 to 2026.
 
 Deployed at https://ipl-impact-model.streamlit.app/
 
@@ -13,8 +13,8 @@ Note: The impact score model is batting-only. Bowling data is treated as raw sco
 ## Data Structure
 
 ### Source Data
-- **Match Scorecards**: Excel files containing raw IPL match data from seasons 2008-2025
-- **Data Range**: 1,181+ match records organized in seasonal batches
+- **Match Scorecards**: Excel files containing raw IPL match data from seasons 2008-2026
+- **Data Range**: 1,255 match records organized in seasonal batches
 - **File Organization**:
   - `scorecards/base/` - Raw match data
   - `scorecards/results/` - Processed data with impact metrics
@@ -23,8 +23,8 @@ Note: The impact score model is batting-only. Bowling data is treated as raw sco
 
 ### Seasons Covered
 - 2008-2019: Batches of 59-60 matches per file
-- 2020-2025: Batches of 59-75 matches per file
-- **Total Matches**: 1,181+ recorded matches
+- 2020-2026: Batches of 59-75 matches per file
+- **Total Matches**: 1,255 recorded matches
 
 ## Project Files
 
@@ -152,6 +152,7 @@ The Streamlit UI focuses on batting impact scores and batting-related trends.
 | 0959 to 1033 | 2023 |
 | 1034 to 1107 | 2024 |
 | 1108 to 1181 | 2025 |
+| 1182 to 1255 | 2026 |
 
 ## Data Format
 
@@ -194,4 +195,4 @@ Bowling data is not scored by the impact model.
 - The project uses positive z-score normalization to compare player performance
 - Impact metrics are calculated to identify match-winning contributions
 - Player names are cleaned to remove special characters and annotations for consistent grouping
-- The project covers 18 IPL seasons with over 1,181 matches analyzed
+- The project covers 19 IPL seasons with over 1,255 matches analyzed
