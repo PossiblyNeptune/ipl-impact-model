@@ -153,8 +153,6 @@ The Streamlit UI focuses on batting impact scores and batting-related trends.
 | 1034 to 1107 | 2024 |
 | 1108 to 1181 | 2025 |
 
-Note: If your first file is `0000 to 0059`, the tools still map it to 2008.
-
 ## Data Format
 
 ### Excel Scorecard Structure

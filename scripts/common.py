@@ -31,6 +31,7 @@ DEFAULT_RANGES: List[Tuple[int, int]] = [
     (959, 1033),
     (1034, 1107),
     (1108, 1181),
+    (1182,1255),
 ]
 
 SEASON_RANGES: List[Tuple[int, int, str]] = [
@@ -52,6 +53,7 @@ SEASON_RANGES: List[Tuple[int, int, str]] = [
     (959, 1033, "2023"),
     (1034, 1107, "2024"),
     (1108, 1181, "2025"),
+    (1182, 1255, "2026"),
 ]
 
 

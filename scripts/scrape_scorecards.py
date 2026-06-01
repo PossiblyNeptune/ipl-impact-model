@@ -7,7 +7,10 @@ import pandas as pd
 import requests
 from bs4 import BeautifulSoup
 
-from .common import BASE_DIR, DEFAULT_RANGES, ensure_dir, scorecard_filename
+try:
+    from .common import BASE_DIR, DEFAULT_RANGES, ensure_dir, scorecard_filename
+except ImportError:  # Allow running as a script without package context
+    from scripts.common import BASE_DIR, DEFAULT_RANGES, ensure_dir, scorecard_filename
 
 BASE_URL = "https://www.howstat.com/Cricket/Statistics/IPL/MatchScorecard.asp?MatchCode="
 

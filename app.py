@@ -55,17 +55,58 @@ section[data-testid="stSidebar"] {
 }
 
 section[data-testid="stSidebar"][aria-expanded="false"] {
-    width: 18px;
-    min-width: 18px;
-    max-width: 18px;
+    width: 0;
+    min-width: 0;
+    max-width: 0;
     margin-left: 0;
-    border-right: 1px solid rgba(29, 122, 109, 0.35);
-    box-shadow: inset -6px 0 12px rgba(29, 122, 109, 0.25);
 }
 
 section[data-testid="stSidebar"][aria-expanded="false"] ~ div[data-testid="stMain"] {
     margin-left: 0;
     padding-left: 0;
+}
+
+button[data-testid="stExpandSidebarButton"],
+button[data-testid="stBaseButton-headerNoPadding"] {
+    background: #143f37;
+    color: #f6f1e9;
+    padding: 6px 12px;
+    border-radius: 999px;
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 0.7rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    box-shadow: 0 8px 18px rgba(0, 0, 0, 0.18);
+    position: relative;
+}
+
+button[data-testid="stExpandSidebarButton"] *,
+button[data-testid="stBaseButton-headerNoPadding"] * {
+    display: none !important;
+}
+
+button[data-testid="stExpandSidebarButton"]::before {
+    content: "Filters";
+    color: #f6f1e9;
+}
+
+button[data-testid="stBaseButton-headerNoPadding"]::before {
+    content: "Close";
+    color: #f6f1e9;
+}
+
+.table-wrap table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.table-wrap th,
+.table-wrap td {
+    text-align: center !important;
+}
+
+.table-wrap th {
+    white-space: nowrap;
 }
 
 div[data-testid="stDataFrame"] div[role="gridcell"],
@@ -140,12 +181,13 @@ st.markdown(STYLE, unsafe_allow_html=True)
 st.markdown(
     """
     <div class="hero">
-      <h1>IPL Impact Studio</h1>
+      <h1>IPL Impact Model</h1>
             <p>Explore match scorecards, batting impact ratings, and season trends.</p>
     </div>
     """,
     unsafe_allow_html=True,
 )
+
 
 st.info("Impact scores are batting-only. Bowling metrics are not modeled in this UI.")
 
@@ -171,10 +213,14 @@ def center_table(
         for col_idx in small_cols:
             styles.append({
                 "selector": f"th.col{col_idx}, td.col{col_idx}",
-                "props": [("width", "70px"), ("max-width", "70px")],
+                "props": [("width", "90px"), ("min-width", "90px"), ("max-width", "90px")],
             })
 
-    return styler.set_table_styles(styles)
+    return styler.set_table_styles(styles).set_table_attributes('class="center-table"')
+
+
+def render_table(styler: pd.io.formats.style.Styler) -> None:
+    st.markdown(f"<div class='table-wrap'>{styler.to_html()}</div>", unsafe_allow_html=True)
 
 files = find_scorecard_files(BASE_DIR)
 if not files:
@@ -327,30 +373,21 @@ with tab_scorecard:
 
     st.markdown("\n")
 
-    team_summary_rows: List[Dict[str, object]] = []
-    for idx, block in enumerate(batting_blocks):
-        total = block.get("total")
-        if not total:
-            continue
-        team_summary_rows.append({
-            "Team": block.get("team_name", f"Innings {idx + 1}"),
-            "Runs": total["Runs"],
-            "Overs": total["Overs"],
-            "RunRate": total["RunRate"],
-        })
-
-    if team_summary_rows:
-        team_summary_df = pd.DataFrame(team_summary_rows)
-        team_fig = px.bar(
-            team_summary_df,
-            x="Team",
-            y="Runs",
-            color="RunRate",
+    if impact_df.empty:
+        st.info("No impact data found for this match.")
+    else:
+        match_top = impact_df.sort_values(by="ImpactIndex", ascending=False).head(10)
+        impact_fig = px.bar(
+            match_top,
+            x="ImpactIndex",
+            y="Name",
+            orientation="h",
+            color="ImpactIndex",
             color_continuous_scale=["#1d7a6d", "#e4572e"],
-            title="Match Runs and Run Rate",
+            title="Match Impact Leaders",
         )
-        team_fig.update_layout(height=320)
-        st.plotly_chart(team_fig, use_container_width=True)
+        impact_fig.update_layout(height=320, yaxis=dict(autorange="reversed"))
+        st.plotly_chart(impact_fig, use_container_width=True)
 
     for idx, block in enumerate(batting_blocks):
         team_name = block.get("team_name", f"Innings {idx + 1}")
@@ -362,16 +399,24 @@ with tab_scorecard:
                 "Player", "How Out", "Runs", "Balls", "4s", "6s", "Strike Rate", "ImpactIndex"
             ]]
             batting_df["Strike Rate"] = pd.to_numeric(batting_df["Strike Rate"], errors="coerce")
-            batting_df["Runs"] = pd.to_numeric(batting_df["Runs"], errors="coerce")
+            for col in ["Runs", "Balls", "4s", "6s"]:
+                batting_df[col] = pd.to_numeric(batting_df[col], errors="coerce").round(0).astype("Int64")
             batting_df = batting_df.reset_index(drop=True)
-            batting_df.index = range(1, len(batting_df) + 1)
-            batting_df.index.name = "No."
-            st.dataframe(
+            batting_df.insert(0, "No.", range(1, len(batting_df) + 1))
+            st.table(
                 center_table(
                     batting_df,
-                    format_map={"Strike Rate": "{:.2f}", "ImpactIndex": "{:.3f}"},
-                ),
-                use_container_width=True,
+                    format_map={
+                        "Runs": "{:.0f}",
+                        "Balls": "{:.0f}",
+                        "4s": "{:.0f}",
+                        "6s": "{:.0f}",
+                        "Strike Rate": "{:.2f}",
+                        "ImpactIndex": "{:.3f}",
+                    },
+                    hide_index=True,
+                    small_cols=[0],
+                )
             )
         else:
             st.info("No batting data found for this innings.")
@@ -394,6 +439,7 @@ with tab_impact:
             "SR": "AvgSR",
             "Match": "Innings",
         }, inplace=True)
+        player_summary["ImpactPerInnings"] = player_summary["TotalImpact"] / player_summary["Innings"]
 
         top_count = st.slider("Top players", min_value=5, max_value=30, value=12)
         impact_top = player_summary.sort_values(by="TotalImpact", ascending=False).head(top_count)
@@ -405,7 +451,7 @@ with tab_impact:
             orientation="h",
             color="TotalImpact",
             color_continuous_scale=["#1d7a6d", "#e4572e"],
-            title="Season Cumulative Impact by Player",
+            title="Total Cumulative Impact by Player",
         )
         fig.update_layout(height=450, yaxis=dict(autorange="reversed"))
         st.plotly_chart(fig, use_container_width=True)
@@ -423,6 +469,56 @@ with tab_impact:
         )
         scatter_fig.update_layout(height=450)
         st.plotly_chart(scatter_fig, use_container_width=True)
+
+        st.markdown("#### Impact vs Innings Count")
+        innings_fig = px.scatter(
+            player_summary,
+            x="Innings",
+            y="TotalImpact",
+            size="TotalRuns",
+            color="ImpactPerInnings",
+            hover_name="Name",
+            color_continuous_scale=["#1d7a6d", "#e4572e"],
+            title="Total Impact vs Innings",
+            labels={
+                "TotalImpact": "Total Impact",
+                "Innings": "Innings",
+                "ImpactPerInnings": "Impact per Innings",
+            },
+        )
+        innings_fig.update_layout(height=360)
+        st.plotly_chart(innings_fig, use_container_width=True)
+
+        st.markdown("#### Total Impact vs % Match Impact Share")
+        match_totals = df_all.groupby(["Season", "Match"]).agg({"ImpactIndex": "sum"}).rename(
+            columns={"ImpactIndex": "MatchImpact"}
+        )
+        share_df = df_all.merge(match_totals, on=["Season", "Match"], how="left")
+        share_df["MatchImpactPct"] = (share_df["ImpactIndex"] / share_df["MatchImpact"]) * 100
+
+        player_team_share = share_df.groupby("Name").agg({
+            "ImpactIndex": "sum",
+            "MatchImpactPct": "mean",
+        }).reset_index()
+        player_team_share = player_team_share.merge(
+            player_summary[["Name", "Innings"]],
+            on="Name",
+            how="left",
+        )
+
+        share_fig = px.scatter(
+            player_team_share,
+            x="ImpactIndex",
+            y="MatchImpactPct",
+            size="ImpactIndex",
+            color="Innings",
+            hover_name="Name",
+            color_continuous_scale=["#1d7a6d", "#e4572e"],
+            title="Total Impact vs Avg % Match Impact Share",
+            labels={"ImpactIndex": "Total Impact", "MatchImpactPct": "% of Match Impact"},
+        )
+        share_fig.update_layout(height=360)
+        st.plotly_chart(share_fig, use_container_width=True)
 
 with tab_trends:
     st.subheader("Batting Trends")
@@ -446,30 +542,43 @@ with tab_trends:
         )
         st.plotly_chart(trend_fig, use_container_width=True)
 
-        st.markdown("#### Best Knocks (Selected Seasons)")
+        st.markdown("#### Best Knocks")
         top_knocks = df_all.sort_values(by="ImpactIndex", ascending=False).head(20).reset_index(drop=True)
         top_knocks.insert(0, "Rank", range(1, len(top_knocks) + 1))
         top_knocks_view = top_knocks[["Rank", "Name", "Season", "Match", "Runs", "SR", "ImpactIndex"]]
-        st.dataframe(
+        top_knocks_view["Runs"] = pd.to_numeric(top_knocks_view["Runs"], errors="coerce").round(0).astype("Int64")
+        render_table(
             center_table(
                 top_knocks_view,
-                format_map={"SR": "{:.2f}", "ImpactIndex": "{:.3f}"},
+                format_map={"Runs": "{:.0f}", "SR": "{:.2f}", "ImpactIndex": "{:.3f}"},
                 hide_index=True,
                 small_cols=[0, 2],
-            ),
-            use_container_width=True,
+            )
         )
 
         st.markdown("#### Best Players by Season")
-        seasonal_totals = df_all.groupby(["Season", "Name"])['ImpactIndex'].sum().reset_index()
+        seasonal_totals = df_all.groupby(["Season", "Name"]).agg({
+            "ImpactIndex": "sum",
+            "Runs": "sum",
+            "SR": "mean",
+            "Match": "count",
+        }).reset_index()
+        seasonal_totals.rename(columns={"Match": "Innings"}, inplace=True)
         seasonal_top = seasonal_totals.sort_values(by="ImpactIndex", ascending=False).head(20).reset_index(drop=True)
         seasonal_top.insert(0, "Rank", range(1, len(seasonal_top) + 1))
-        st.dataframe(
+        seasonal_top = seasonal_top[["Rank", "Season", "Name", "ImpactIndex", "Innings", "Runs", "SR"]]
+        seasonal_top["Innings"] = pd.to_numeric(seasonal_top["Innings"], errors="coerce").round(0).astype("Int64")
+        seasonal_top["Runs"] = pd.to_numeric(seasonal_top["Runs"], errors="coerce").round(0).astype("Int64")
+        render_table(
             center_table(
                 seasonal_top,
-                format_map={"ImpactIndex": "{:.3f}"},
+                format_map={
+                    "ImpactIndex": "{:.3f}",
+                    "Innings": "{:.0f}",
+                    "Runs": "{:.0f}",
+                    "SR": "{:.2f}",
+                },
                 hide_index=True,
                 small_cols=[0, 1],
-            ),
-            use_container_width=True,
+            )
         )
