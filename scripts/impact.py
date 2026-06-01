@@ -56,6 +56,7 @@ def _build_player_data_for_match(
                 continue
             try:
                 runs = float(row[2])
+                balls = float(row[3])
                 sr = float(row[6])
             except Exception:
                 continue
@@ -67,6 +68,7 @@ def _build_player_data_for_match(
             player_data.append({
                 "Name": cleaned_name,
                 "Runs": runs,
+                "Balls": balls,
                 "SR": sr,
                 "SR_Team_SR": sr / team_sr if team_sr > 0 else 1.0,
                 "Runs_Team_Runs": runs / team_runs if team_runs > 0 else 0.0,

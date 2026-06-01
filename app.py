@@ -430,15 +430,20 @@ with tab_impact:
         player_summary = df_all.groupby("Name").agg({
             "ImpactIndex": "sum",
             "Runs": "sum",
-            "SR": "mean",
+            "Balls": "sum",
             "Match": "count",
         }).reset_index()
+
         player_summary.rename(columns={
             "ImpactIndex": "TotalImpact",
             "Runs": "TotalRuns",
-            "SR": "AvgSR",
             "Match": "Innings",
         }, inplace=True)
+
+        player_summary["AvgSR"] = (
+            player_summary["TotalRuns"] * 100
+            / player_summary["Balls"]
+        ).round(2)
         player_summary["ImpactPerInnings"] = player_summary["TotalImpact"] / player_summary["Innings"]
 
         top_count = st.slider("Top players", min_value=5, max_value=30, value=12)
@@ -560,10 +565,16 @@ with tab_trends:
         seasonal_totals = df_all.groupby(["Season", "Name"]).agg({
             "ImpactIndex": "sum",
             "Runs": "sum",
-            "SR": "mean",
+            "Balls": "sum",
             "Match": "count",
         }).reset_index()
+
         seasonal_totals.rename(columns={"Match": "Innings"}, inplace=True)
+
+        seasonal_totals["SR"] = (
+            seasonal_totals["Runs"] * 100
+            / seasonal_totals["Balls"]
+        ).round(2)
         seasonal_top = seasonal_totals.sort_values(by="ImpactIndex", ascending=False).head(20).reset_index(drop=True)
         seasonal_top.insert(0, "Rank", range(1, len(seasonal_top) + 1))
         seasonal_top = seasonal_top[["Rank", "Season", "Name", "ImpactIndex", "Innings", "Runs", "SR"]]
