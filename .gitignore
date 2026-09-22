@@ -59,8 +59,9 @@ ENV/
 env.bak/
 venv.bak/
 
-# Streamlit local runtime & cache
-.streamlit/
+# Streamlit local runtime & cache (keep config.toml for theme definition)
+.streamlit/*
+!.streamlit/config.toml
 
 # Web scraping scripts (local utility)
 scripts/scrape_scorecards.py
