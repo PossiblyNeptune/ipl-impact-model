@@ -252,6 +252,16 @@ div[data-baseweb="select"] * {
 div[data-testid="stSlider"] label, div[data-testid="stSlider"] div {
   color: var(--ink) !important;
 }
+
+/* Card frame for Plotly Charts */
+div[data-testid="stPlotlyChart"] {
+  background: #ffffff;
+  border-radius: 14px;
+  padding: 0.6rem 0.6rem 0.2rem 0.6rem;
+  border: 1px solid var(--border-light);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.03);
+  margin-bottom: 1.2rem;
+}
 </style>
 """
 
@@ -373,6 +383,19 @@ def render_table(styler: pd.io.formats.style.Styler) -> None:
     st.markdown(f"<div class='table-wrap'>{styler.to_html()}</div>", unsafe_allow_html=True)
 
 
+PLOT_CONFIG = {
+    "toImageButtonOptions": {
+        "format": "png",
+        "filename": "ipl_vorp_chart",
+        "height": 700,
+        "width": 1250,
+        "scale": 2.5,
+    },
+    "displayModeBar": True,
+    "displaylogo": False,
+}
+
+
 def apply_plot_theme(
     fig: go.Figure,
     height: Optional[int] = None,
@@ -386,15 +409,15 @@ def apply_plot_theme(
             xanchor="left",
             pad=dict(b=10),
         ),
-        plot_bgcolor="rgba(0,0,0,0)",
-        paper_bgcolor="rgba(0,0,0,0)",
+        plot_bgcolor="#ffffff",
+        paper_bgcolor="#ffffff",
         margin=dict(l=60 if not is_horizontal else 25, r=30, t=55, b=55),
     )
     fig.update_xaxes(
         color="#1d1a16",
         title_font=dict(color="#1d1a16", family="Inter, sans-serif", size=12),
         tickfont=dict(color="#1d1a16", family="Inter, sans-serif", size=11),
-        gridcolor="rgba(29, 122, 109, 0.12)",
+        gridcolor="rgba(29, 122, 109, 0.10)",
         linecolor="rgba(29, 122, 109, 0.25)",
         zerolinecolor="rgba(29, 122, 109, 0.25)",
         automargin=True,
@@ -404,7 +427,7 @@ def apply_plot_theme(
         color="#1d1a16",
         title_font=dict(color="#1d1a16", family="Inter, sans-serif", size=12),
         tickfont=dict(color="#1d1a16", family="Inter, sans-serif", size=11),
-        gridcolor="rgba(29, 122, 109, 0.12)",
+        gridcolor="rgba(29, 122, 109, 0.10)",
         linecolor="rgba(29, 122, 109, 0.25)",
         zerolinecolor="rgba(29, 122, 109, 0.25)",
         automargin=True,
@@ -426,6 +449,14 @@ def apply_plot_theme(
     if height is not None:
         fig.update_layout(height=height)
     return fig
+
+
+def render_chart(fig: go.Figure, filename: Optional[str] = None) -> None:
+    config = dict(PLOT_CONFIG)
+    if filename:
+        config["toImageButtonOptions"] = dict(PLOT_CONFIG["toImageButtonOptions"])
+        config["toImageButtonOptions"]["filename"] = filename
+    st.plotly_chart(fig, use_container_width=True, theme=None, config=config)
 
 
 # ---------------------------------------------------------
@@ -567,7 +598,7 @@ with tab_scorecard:
             yaxis=dict(autorange="reversed"),
         )
         apply_plot_theme(fig_match_impact, is_horizontal=True)
-        st.plotly_chart(fig_match_impact, use_container_width=True, theme=None)
+        render_chart(fig_match_impact, "match_batting_impact_leaders")
 
         # 2. Match Individual Position I-VORP Bar Chart (directly under impact bar)
         top_match_vorp = (
@@ -592,7 +623,7 @@ with tab_scorecard:
             yaxis=dict(autorange="reversed"),
         )
         apply_plot_theme(fig_match_vorp, is_horizontal=True)
-        st.plotly_chart(fig_match_vorp, use_container_width=True, theme=None)
+        render_chart(fig_match_vorp, "match_ivorp_leaders")
 
         # Detailed Innings Batting Scorecards
         for inn_num in inn_numbers:
@@ -872,7 +903,7 @@ with tab_vorp:
                 yaxis=dict(autorange="reversed"),
             )
             apply_plot_theme(fig_pos, is_horizontal=True)
-            st.plotly_chart(fig_pos, use_container_width=True, theme=None)
+            render_chart(fig_pos, "positional_leaderboard")
 
             # Scatter Plot 1: Innings vs Total I-VORP
             scatter_vorp = px.scatter(
@@ -895,7 +926,7 @@ with tab_vorp:
                 },
             )
             apply_plot_theme(scatter_vorp, height=430)
-            st.plotly_chart(scatter_vorp, use_container_width=True, theme=None)
+            render_chart(scatter_vorp, "innings_vs_total_ivorp")
 
             # Scatter Plot 2: Innings vs Total Batting Impact (under innings vs ivorp)
             scatter_impact = px.scatter(
@@ -918,7 +949,7 @@ with tab_vorp:
                 },
             )
             apply_plot_theme(scatter_impact, height=430)
-            st.plotly_chart(scatter_impact, use_container_width=True, theme=None)
+            render_chart(scatter_impact, "innings_vs_total_impact")
 
             # Clean Centered Table
             st.markdown(f"#### 📋 Leaderboard Table: {pos_label_display} ({view_mode})")
@@ -1094,7 +1125,7 @@ with tab_profiler:
                 title=f"{selected_player}: Batting Impact vs Replacement Level Across Positions",
             )
             apply_plot_theme(fig_comp, height=380)
-            st.plotly_chart(fig_comp, use_container_width=True, theme=None)
+            render_chart(fig_comp, "batting_impact_vs_replacement_positions")
 
         # Display Positional Tables
         pt1, pt2 = st.columns(2)
@@ -1187,7 +1218,7 @@ with tab_profiler:
         fig_prog.update_traces(line_color="#1d7a6d", line_width=3, marker=dict(size=8, color="#e4572e"))
         fig_prog.update_xaxes(dtick=1)
         apply_plot_theme(fig_prog, height=370)
-        st.plotly_chart(fig_prog, use_container_width=True, theme=None)
+        render_chart(fig_prog, "season_by_season_ivorp")
 
         # Season vs % Better Than Replacement Bar Graph
         st.markdown("#### 📊 Season-by-Season % Better Than Replacement (% vs Rep)")
@@ -1245,7 +1276,7 @@ with tab_profiler:
             uniformtext_mode="hide",
         )
         apply_plot_theme(fig_pct_prog, height=390)
-        st.plotly_chart(fig_pct_prog, use_container_width=True, theme=None)
+        render_chart(fig_pct_prog, "season_by_season_pct_vs_rep")
 
         # Season vs Total Impact Graph at bottom
         st.markdown("#### 💥 Season-by-Season Total Batting Impact Trajectory")
@@ -1261,7 +1292,7 @@ with tab_profiler:
         fig_impact_prog.update_traces(line_color="#e4572e", line_width=3, marker=dict(size=8, color="#1d7a6d"))
         fig_impact_prog.update_xaxes(dtick=1)
         apply_plot_theme(fig_impact_prog, height=370)
-        st.plotly_chart(fig_impact_prog, use_container_width=True, theme=None)
+        render_chart(fig_impact_prog, "season_by_season_total_impact")
 
 
 # =========================================================
