@@ -245,6 +245,7 @@ st.markdown(
 # ---------------------------------------------------------
 PARQUET_PATH = REPO_ROOT / "scorecards_csv" / "results" / "all_batting_with_vorp.parquet"
 CSV_PATH = REPO_ROOT / "scorecards_csv" / "results" / "all_batting_with_vorp.csv"
+MATCHES_PARQUET_PATH = REPO_ROOT / "scorecards_csv" / "results" / "all_matches.parquet"
 MATCHES_CSV_PATH = REPO_ROOT / "scorecards_csv" / "results" / "all_matches.csv"
 
 
@@ -259,7 +260,10 @@ def load_vorp_dataset() -> pd.DataFrame:
     elif CSV_PATH.exists():
         df = pd.read_csv(CSV_PATH)
     else:
-        df = vorp.load_and_enrich_vorp_data()
+        try:
+            df = vorp.load_and_enrich_vorp_data()
+        except Exception:
+            return pd.DataFrame()
 
     # Backwards compatibility and helper aliases
     df["Name"] = df["Player_Clean"]
@@ -274,13 +278,22 @@ def load_matches_metadata() -> pd.DataFrame:
     """
     Loads match summary data with team names, scores, and match results.
     """
-    if MATCHES_CSV_PATH.exists():
+    if MATCHES_PARQUET_PATH.exists():
+        return pd.read_parquet(MATCHES_PARQUET_PATH)
+    elif MATCHES_CSV_PATH.exists():
         return pd.read_csv(MATCHES_CSV_PATH)
     return pd.DataFrame()
 
 
 df_master = load_vorp_dataset()
 df_matches = load_matches_metadata()
+
+if df_master.empty:
+    st.error(
+        "⚠️ **Dataset not found.** The master VORP dataset could not be loaded. "
+        "Please ensure `scorecards_csv/results/all_batting_with_vorp.parquet` is present in the repository."
+    )
+    st.stop()
 
 
 # ---------------------------------------------------------

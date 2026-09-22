@@ -65,9 +65,10 @@ venv.bak/
 # Web scraping scripts (local utility)
 scripts/scrape_scorecards.py
 
-# Scorecard data folders (large Excel/CSV/Parquet files)
+# Scorecard raw data (Excel files) and intermediate per-batch CSV chunks
 scorecards/
-scorecards_csv/
+scorecards_csv/base/
+scorecards_csv/results/IPL_Scorecards_*
 
 # IDEs & System Files
 .vscode/
