@@ -74,7 +74,7 @@ def scorecard_filename(start: int, end: int) -> str:
 
 
 def parse_scorecard_range(name: str) -> Tuple[Optional[int], Optional[int]]:
-    match = re.search(r"IPL_Scorecards_(\d{4})_to_(\d{4})\.xlsx", name)
+    match = re.search(r"IPL_Scorecards_(\d{4})_to_(\d{4})", name)
     if not match:
         return None, None
     return int(match.group(1)), int(match.group(2))
@@ -84,7 +84,7 @@ def season_for_range(start: Optional[int], end: Optional[int]) -> Optional[str]:
     if start is None or end is None:
         return None
     for range_start, range_end, season in SEASON_RANGES:
-        if start == range_start and end == range_end:
+        if (start == range_start or (start == 1 and range_start == 0)) and end == range_end:
             return season
     return None
 
@@ -134,10 +134,12 @@ def write_csv(rows: Union[List[Dict[str, object]], pd.DataFrame], output_path: U
 
 
 def overs_to_balls(overs: object) -> int:
-    if overs is None:
+    if overs is None or pd.isna(overs):
         return 0
     try:
         overs_value = float(overs)
+        if np.isnan(overs_value):
+            return 0
     except Exception:
         return 0
 

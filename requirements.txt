@@ -3,5 +3,6 @@ pandas
 numpy
 openpyxl
 plotly
+pyarrow
 requests
 beautifulsoup4

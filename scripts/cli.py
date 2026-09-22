@@ -5,9 +5,10 @@ from pathlib import Path
 import re
 from typing import List, Tuple
 
-from scripts import add_impact, batting, bowling, impact, scrape_scorecards
+from scripts import add_impact, batting, bowling, convert_to_csv, impact, vorp
 from scripts.common import (
     BASE_DIR,
+    REPO_ROOT,
     RESULTS_DIR,
     build_file_season_map,
     configure_pandas_display,
@@ -50,6 +51,11 @@ def main() -> None:
     impact_add_parser.add_argument("--input-dir", default=str(BASE_DIR))
     impact_add_parser.add_argument("--output-dir", default=str(RESULTS_DIR))
     impact_add_parser.add_argument("--files", nargs="*", help="Specific files to process")
+
+    convert_csv_parser = subparsers.add_parser("convert-csv", help="Convert Excel scorecards to CSV and structured tables")
+    convert_csv_parser.add_argument("--base-dir", default=str(BASE_DIR))
+    convert_csv_parser.add_argument("--results-dir", default=str(RESULTS_DIR))
+    convert_csv_parser.add_argument("--output-dir", default=str(REPO_ROOT / "scorecards_csv"))
 
     batting_parser = subparsers.add_parser("batting", help="Batting analysis")
     batting_sub = batting_parser.add_subparsers(dest="batting_cmd", required=True)
@@ -108,16 +114,46 @@ def main() -> None:
     impact_top_per_match.add_argument("--limit", type=int, default=5)
     impact_top_per_match.add_argument("--csv", help="Write results to CSV")
 
+    vorp_parser = subparsers.add_parser("vorp", help="Position-specific Impact VORP (I-VORP) analysis")
+    vorp_sub = vorp_parser.add_subparsers(dest="vorp_cmd", required=True)
+
+    vorp_leaders = vorp_sub.add_parser("leaders", help="Position I-VORP leaderboard")
+    vorp_leaders.add_argument("position", help="Position name (e.g., Opener, 'Number 3', 'Number 4', Finisher)")
+    vorp_leaders.add_argument("--scheme", choices=["individual", "tactical"], default="individual")
+    vorp_leaders.add_argument("--season", type=int, default=None)
+    vorp_leaders.add_argument("--min-innings", type=int, default=15)
+    vorp_leaders.add_argument("--min-pct", type=float, default=None, help="Minimum %% vs Rep cutoff")
+    vorp_leaders.add_argument("--sort-by", choices=["total_ivorp", "pct_above_rep", "avg_ivorp"], default="total_ivorp", help="Ranking metric")
+    vorp_leaders.add_argument("--by-season", action="store_true", help="Rank individual player-seasons instead of career totals")
+    vorp_leaders.add_argument("--limit", type=int, default=20)
+    vorp_leaders.add_argument("--csv", help="Write results to CSV")
+
+    vorp_player = vorp_sub.add_parser("player", help="Player I-VORP multi-position profile")
+    vorp_player.add_argument("player", help="Player name to search for")
+
     args = parser.parse_args()
+
 
     if args.command == "scrape":
         ranges = _parse_ranges(args.ranges) if args.ranges else None
-        scrape_scorecards.scrape_scorecards(ranges=ranges, output_dir=Path(args.output_dir))
+        try:
+            from scripts import scrape_scorecards
+            scrape_scorecards.scrape_scorecards(ranges=ranges, output_dir=Path(args.output_dir))
+        except ImportError as e:
+            print(f"Scraping script error: {e}")
         return
 
     if args.command == "add-impact":
         files = resolve_input_files(args.files, Path(args.input_dir)) if args.files else None
         add_impact.add_batting_impact(files, Path(args.input_dir), Path(args.output_dir))
+        return
+
+    if args.command == "convert-csv":
+        convert_to_csv.convert_all(
+            base_src_dir=Path(args.base_dir),
+            results_src_dir=Path(args.results_dir),
+            target_csv_root=Path(args.output_dir),
+        )
         return
 
     if args.command == "batting":
@@ -202,6 +238,33 @@ def main() -> None:
             impact.print_batsman_of_match(rows, args.limit)
             if args.csv:
                 write_csv(rows, args.csv)
+            return
+
+    if args.command == "vorp":
+        df_vorp = vorp.load_and_enrich_vorp_data()
+        if args.vorp_cmd == "leaders":
+            season_str = f"Season {args.season}" if args.season else ("Single Season" if args.by_season else "All-Time")
+            metric_str = "% vs Rep" if "pct" in args.sort_by else "Total I-VORP"
+            title = f"{season_str} Leaders by {metric_str}: {args.position} ({args.scheme.capitalize()} Scheme)"
+            lb = vorp.get_position_leaderboard(
+                df_vorp,
+                position=args.position,
+                scheme=args.scheme,
+                season=args.season,
+                min_innings=args.min_innings,
+                min_pct_above_rep=args.min_pct,
+                sort_by=args.sort_by,
+                group_by_season=args.by_season,
+                limit=args.limit,
+            )
+            vorp.print_leaderboard(lb, title)
+            if args.csv:
+                write_csv(lb, args.csv)
+            return
+
+        if args.vorp_cmd == "player":
+            ind_df, tact_df = vorp.get_player_vorp_profile(df_vorp, args.player)
+            vorp.print_player_profile(args.player, ind_df, tact_df)
             return
 
 
